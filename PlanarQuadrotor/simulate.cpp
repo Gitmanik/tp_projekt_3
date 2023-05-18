@@ -69,6 +69,8 @@ int main(int argc, char* args[])
     std::vector<float> y_history;
     std::vector<float> theta_history;
 
+    Uint32 last_ticks = 0;
+
     if (init(gWindow, gRenderer, SCREEN_WIDTH, SCREEN_HEIGHT) >= 0)
     {
         SDL_Event e;
@@ -79,6 +81,10 @@ int main(int argc, char* args[])
 
         while (!quit)
         {
+            Uint32 t = SDL_GetTicks();
+            std::cout << 1.f / ((float)(t - last_ticks)  / 1000.f)<< std::endl;
+            last_ticks = t;
+
             //events
             while (SDL_PollEvent(&e) != 0)
             {
@@ -119,7 +125,7 @@ int init(std::shared_ptr<SDL_Window>& gWindow, std::shared_ptr<SDL_Renderer>& gR
     {
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
         gWindow = std::shared_ptr<SDL_Window>(SDL_CreateWindow("Planar Quadrotor", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN), SDL_DestroyWindow);
-        gRenderer = std::shared_ptr<SDL_Renderer>(SDL_CreateRenderer(gWindow.get(), -1, SDL_RENDERER_ACCELERATED), SDL_DestroyRenderer);
+        gRenderer = std::shared_ptr<SDL_Renderer>(SDL_CreateRenderer(gWindow.get(), -1, SDL_RENDERER_SOFTWARE), SDL_DestroyRenderer);
         SDL_SetRenderDrawColor(gRenderer.get(), 0xFF, 0xFF, 0xFF, 0xFF);
     }
     else
