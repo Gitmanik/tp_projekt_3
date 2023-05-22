@@ -3,6 +3,9 @@
 */
 #include "simulate.h"
 
+#include <matplot/matplot.h>
+#include <thread>
+
 Eigen::MatrixXf LQR(PlanarQuadrotor &quadrotor, float dt) {
     /* Calculate LQR gain matrix */
     Eigen::MatrixXf Eye = Eigen::MatrixXf::Identity(6, 6);
@@ -15,9 +18,9 @@ Eigen::MatrixXf LQR(PlanarQuadrotor &quadrotor, float dt) {
     Eigen::MatrixXf K = Eigen::MatrixXf::Zero(6, 6);
     Eigen::Vector2f input = quadrotor.GravityCompInput();
 
-    Q.diagonal() << 10, 10, 10, 1, 10, 0.25 / 2 / M_PI;
-    R.row(0) << 0.1, 0.05;
-    R.row(1) << 0.05, 0.1;
+    Q.diagonal() << 4e-3, 4e-3, 4e2, 8e-3, 4.5e-2, 2 / 2 / M_PI;
+    R.row(0) << 3e1, 7;
+    R.row(1) << 7, 3e1;
 
     std::tie(A, B) = quadrotor.Linearize();
     A_discrete = Eye + dt * A;
@@ -31,6 +34,13 @@ void control(PlanarQuadrotor &quadrotor, const Eigen::MatrixXf &K) {
     quadrotor.SetInput(input - K * quadrotor.GetControlState());
 }
 
+void show_history(std::vector<float> x_history, std::vector<float> y_history, std::vector<float> theta_history, std::atomic<bool>& history_active)
+{
+    matplot::plot(x_history, y_history);
+    matplot::show();
+    history_active = false;
+}
+
 int main(int argc, char* args[])
 {
     std::shared_ptr<SDL_Window> gWindow = nullptr;
@@ -40,11 +50,19 @@ int main(int argc, char* args[])
 
     /**
      * TODO: Extend simulation
-     * 1. Set goal state of the mouse when clicking left mouse button (transform the coordinates to the quadrotor world! see visualizer TODO list)
+     * X 1. Set goal state of the mouse when clicking left mouse button (transform the coordinates to the quadrotor world! see visualizer TODO list)
      *    [x, y, 0, 0, 0, 0]
-     * 2. Update PlanarQuadrotor from simulation when goal is changed
+     * X 2. Update PlanarQuadrotor from simulation when goal is changed
     */
+
     Eigen::VectorXf initial_state = Eigen::VectorXf::Zero(6);
+    srand(time(NULL));
+    int initial_x = rand() % (SCREEN_WIDTH/2 - (-SCREEN_WIDTH/2) +1) - SCREEN_WIDTH/2;
+    int initial_y = rand() % (SCREEN_HEIGHT/2 - (-SCREEN_HEIGHT/2) + 1) - SCREEN_HEIGHT/2;
+    std::cout << "Initial state: " << initial_x << " " << initial_y << std::endl;
+    
+    initial_state << initial_x, initial_y, 0, 0, 0, 0;
+
     PlanarQuadrotor quadrotor(initial_state);
     PlanarQuadrotorVisualizer quadrotor_visualizer(&quadrotor);
     /**
@@ -53,7 +71,6 @@ int main(int argc, char* args[])
      * For implemented LQR controller, it has to be [x, y, 0, 0, 0, 0]
     */
     Eigen::VectorXf goal_state = Eigen::VectorXf::Zero(6);
-    goal_state << -1, 7, 0, 0, 0, 0;
     quadrotor.SetGoal(goal_state);
     /* Timestep for the simulation */
     const float dt = 0.001;
@@ -62,8 +79,8 @@ int main(int argc, char* args[])
 
     /**
      * TODO: Plot x, y, theta over time
-     * 1. Update x, y, theta history vectors to store trajectory of the quadrotor
-     * 2. Plot trajectory using matplot++ when key 'p' is clicked
+     * X 1. Update x, y, theta history vectors to store trajectory of the quadrotor
+     * X 2. Plot trajectory using matplot++ when key 'p' is clicked
     */
     std::vector<float> x_history;
     std::vector<float> y_history;
@@ -73,8 +90,6 @@ int main(int argc, char* args[])
     {
         SDL_Event e;
         bool quit = false;
-        float delay;
-        int x, y;
         Eigen::VectorXf state = Eigen::VectorXf::Zero(6);
 
         while (!quit)
@@ -82,16 +97,30 @@ int main(int argc, char* args[])
             //events
             while (SDL_PollEvent(&e) != 0)
             {
+                static std::atomic<bool> history_active = false;
+
                 if (e.type == SDL_QUIT)
                 {
                     quit = true;
                 }
-                else if (e.type == SDL_MOUSEMOTION)
+                else if (e.type == SDL_MOUSEBUTTONDOWN)
                 {
-                    SDL_GetMouseState(&x, &y);
-                    std::cout << "Mouse position: (" << x << ", " << y << ")" << std::endl;
+                    int mouse_x, mouse_y;
+                    SDL_GetMouseState(&mouse_x, &mouse_y);
+                    mouse_x = (mouse_x - SCREEN_WIDTH / 2);
+                    mouse_y = (mouse_y - SCREEN_HEIGHT / 2);
+                    std::cout << "Setting new position: (" << mouse_x << ", " << mouse_y << ")" << std::endl;
+                    goal_state << mouse_x, mouse_y, 0, 0, 0, 0;
+                    quadrotor.SetGoal(goal_state);
                 }
-                
+                else if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDL_KeyCode::SDLK_p && history_active == false)
+                {
+                    std::cout << "Plotting" << std::endl;
+                    history_active = true;
+
+                    std::thread history_thread(show_history, x_history, y_history, theta_history, std::ref(history_active));
+                    history_thread.detach();
+                }
             }
 
             SDL_Delay((int) dt * 1000);
@@ -107,6 +136,11 @@ int main(int argc, char* args[])
             /* Simulate quadrotor forward in time */
             control(quadrotor, K);
             quadrotor.Update(dt);
+
+            Eigen::VectorXf current_state = quadrotor.GetState();
+            x_history.push_back(current_state[0]);
+            y_history.push_back(current_state[1]);
+            theta_history.push_back(current_state[2]);
         }
     }
     SDL_Quit();
