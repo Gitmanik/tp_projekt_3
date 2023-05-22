@@ -14,3 +14,8 @@ public:
     PlanarQuadrotorVisualizer(PlanarQuadrotor *quadrotor_ptr);
     void render(std::shared_ptr<SDL_Renderer> &gRenderer);
 };
+
+struct Vector2 {
+    float x;
+    float y;
+};

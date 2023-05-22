@@ -125,7 +125,7 @@ int main(int argc, char* args[])
 
             SDL_Delay((int) dt * 1000);
 
-            SDL_SetRenderDrawColor(gRenderer.get(), 0xFF, 0xFF, 0xFF, 0xFF);
+            SDL_SetRenderDrawColor(gRenderer.get(), 0x3E, 0x78, 0xB2, 0xFF);
             SDL_RenderClear(gRenderer.get());
 
             /* Quadrotor rendering step */
@@ -159,7 +159,6 @@ int init(std::shared_ptr<SDL_Window>& gWindow, std::shared_ptr<SDL_Renderer>& gR
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
         gWindow = std::shared_ptr<SDL_Window>(SDL_CreateWindow("Planar Quadrotor", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN), SDL_DestroyWindow);
         gRenderer = std::shared_ptr<SDL_Renderer>(SDL_CreateRenderer(gWindow.get(), -1, sdl_renderer), SDL_DestroyRenderer);
-        SDL_SetRenderDrawColor(gRenderer.get(), 0xFF, 0xFF, 0xFF, 0xFF);
     }
     else
     {
