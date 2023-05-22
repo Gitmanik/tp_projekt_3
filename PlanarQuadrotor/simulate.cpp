@@ -5,6 +5,7 @@
 
 #include <matplot/matplot.h>
 #include <thread>
+#include <VSSynth/VSSynth.h>
 
 Eigen::MatrixXf LQR(PlanarQuadrotor &quadrotor, float dt) {
     /* Calculate LQR gain matrix */
@@ -88,6 +89,18 @@ int main(int argc, char* args[])
 
     if (init(gWindow, gRenderer, SCREEN_WIDTH, SCREEN_HEIGHT) >= 0)
     {
+        VSSynth::Generators::Tone tone(
+            [](double frequency, double time) {
+                return VSSynth::Waveforms::square(frequency, time);
+            });
+        tone.playNote(70);
+
+        VSSynth::Synthesizer synth;
+
+        synth.open();
+        synth.addSoundGenerator(&tone);
+        synth.unpause();
+
         SDL_Event e;
         bool quit = false;
         Eigen::VectorXf state = Eigen::VectorXf::Zero(6);
@@ -141,7 +154,11 @@ int main(int argc, char* args[])
             x_history.push_back(current_state[0]);
             y_history.push_back(current_state[1]);
             theta_history.push_back(current_state[2]);
+
+            tone.setVolume(std::min(100.f, std::exp((std::abs(quadrotor.input[0]) + std::abs(quadrotor.input[1])) * 0.6f)));
         }
+        synth.pause();
+        synth.close();
     }
     SDL_Quit();
     return 0;
@@ -154,7 +171,7 @@ int init(std::shared_ptr<SDL_Window>& gWindow, std::shared_ptr<SDL_Renderer>& gR
     sdl_renderer = SDL_RENDERER_SOFTWARE;
     #endif
 
-    if (SDL_Init(SDL_INIT_VIDEO) >= 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) >= 0)
     {
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
         gWindow = std::shared_ptr<SDL_Window>(SDL_CreateWindow("Planar Quadrotor", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN), SDL_DestroyWindow);

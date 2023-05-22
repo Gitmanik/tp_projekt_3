@@ -12,8 +12,8 @@ private:
     Eigen::VectorXf z_goal = Eigen::VectorXf::Zero(6);
     // m, I, r, g parameters
     Eigen::VectorXf params = Eigen::Vector4f(0.486, 0.00383, 0.25, 9.81); 
-    Eigen::Vector2f input = Eigen::Vector2f::Zero();
 public:
+    Eigen::Vector2f input = Eigen::Vector2f::Zero();
     PlanarQuadrotor();
     PlanarQuadrotor(Eigen::VectorXf z);
     void SetGoal(Eigen::VectorXf z_goal);
